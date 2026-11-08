@@ -1,12 +1,6 @@
 spring:
   application:
     name: test4
-  ai:
-    openai:
-      base-url: https://api.deepseek.com
-      api-key: "${DEEPSEEK_API_KEY:your-deepseek-api-key}"
-      chat:
-        model: deepseek-flash
 qweather:
   host: https://***.re.qweatherapi.com
   key: "${QWEATHER_API_KEY:your-qweather-api-key}"

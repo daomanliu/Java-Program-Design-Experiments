@@ -12,38 +12,8 @@ public class GeoResponse {
     @Data
     public static class Location {
         private String name;    // 城市名
-        private String lat;     // 经度
-        private String lon;     // 纬度
+        private String lat;     // 纬度
+        private String lon;     // 经度
         private String adm1;    // 省份
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

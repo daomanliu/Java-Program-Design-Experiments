@@ -20,7 +20,7 @@
 <div class="box">
     <h2>🌤 天气查询</h2>
     <div class="row">
-        <input type="text" id="city" placeholder="输入城市名，如：北京">
+        <label for="city"></label><input type="text" id="city" placeholder="输入城市名，如：北京">
         <button onclick="query()">查询</button>
     </div>
     <p id="msg"></p>
@@ -42,7 +42,7 @@
 
             if (data.code !== 200) { msg.textContent = data.msg; return; }
             msg.textContent = '';
-            const w = data.data.weather;
+            const w = data.data;
 
             result.innerHTML = `
             <h3>${data.msg}</h3>
