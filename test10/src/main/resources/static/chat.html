@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 聊天</title>
+    <link rel="stylesheet" href="/lib/katex/katex.min.css">
+    <script src="/lib/katex/katex.min.js"></script>
+    <script src="/lib/marked.min.js"></script>
+    <style>
+        html, body { height: 100%; margin: 0; }
+        body { font-family: sans-serif; display: flex; background: #f0f0f0; }
+        .box { background: #fff; flex: 1; margin: 20px; padding: 20px;
+            border-radius: 8px; border: 1px solid #ddd;
+            display: flex; flex-direction: column; }
+        h2 { margin: 0 0 15px; font-size: 18px; }
+        #log { flex: 1; overflow-y: auto; border: 1px solid #eee; border-radius: 4px;
+            padding: 10px; margin-bottom: 10px; background: #fafafa; }
+        .msg { margin: 8px 0; font-size: 14px; line-height: 1.6; }
+        .msg.user { color: #1a73e8; white-space: pre-wrap; }
+        .msg.assistant { color: #222; }
+        .msg.assistant table { border-collapse: collapse; margin: 8px 0; }
+        .msg.assistant th, .msg.assistant td { border: 1px solid #ccc; padding: 5px 10px; }
+        .msg.assistant pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        .msg.assistant code { background: #f0f0f0; padding: 1px 4px; border-radius: 3px; }
+        .msg.assistant pre code { background: none; padding: 0; }
+        .row { display: flex; gap: 10px; }
+        input { flex: 1; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 8px 16px; background: #333; color: #fff; border: none;
+            border-radius: 4px; cursor: pointer; }
+        button:disabled, input:disabled { opacity: 0.5; cursor: not-allowed; }
+        #msg { color: red; font-size: 13px; min-height: 18px; margin: 6px 0; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2>AI 聊天</h2>
+    <div id="log"></div>
+    <p id="msg"></p>
+    <div class="row">
+        <label for="input"></label><input type="text" id="input" placeholder="试试问：用表格对比重庆和北京的天气，并解释质能方程 $E=mc^2$" onkeydown="if(event.key==='Enter')send()">
+        <button id="sendBtn" onclick="send()">发送</button>
+    </div>
+</div>
+
+<script>
+    const history = [];
+    let streaming = false;
+
+    const input = document.getElementById('input');
+    const btn = document.getElementById('sendBtn');
+    const msg = document.getElementById('msg');
+    const log = document.getElementById('log');
+
+    function append(role, text) {
+        const div = document.createElement('div');
+        div.className = 'msg ' + role;
+        if (role === 'user') {
+            div.textContent = '我：' + text;
+        } else {
+            div.textContent = 'AI：' + text;
+        }
+        log.appendChild(div);
+        div.scrollIntoView();
+        return div;
+    }
+
+    function setStreaming(on) {
+        streaming = on;
+        input.disabled = on;
+        btn.disabled = on;
+        btn.textContent = on ? '回复中…' : '发送';
+    }
+
+    /* ---------- markdown + KaTeX 实时渲染 ---------- */
+    const mathChunks = [];
+
+    function storeMath(tex, display) {
+        mathChunks.push({ tex, display });
+        return ` MATH${mathChunks.length - 1} `;
+    }
+
+    function renderMarkdown(src) {
+        mathChunks.length = 0;
+        let text = src;
+
+        // 先抠 $$...$$，再抠 $...$（未闭合的自动跳过，流式中安全）
+        text = text.replace(/\$\$([\s\S]+?)\$\$/g, (m, tex) => storeMath(tex, true));
+        text = text.replace(/(?<!\$)\$([^\s$][^\n$]*?)\$/g, (m, tex) => storeMath(tex, false));
+
+        // 未闭合的代码块补全，防止整页渲染崩掉
+        if ((text.match(/```/g) || []).length % 2 === 1) {
+            text += '\n```';
+        }
+
+        let html = marked.parse(text);
+
+        html = html.replace(/ MATH(\d+) /g, (m, i) => {
+            try {
+                return katex.renderToString(mathChunks[i].tex, {
+                    displayMode: mathChunks[i].display,
+                    throwOnError: false
+                });
+            } catch (e) {
+                return mathChunks[i].tex;
+            }
+        });
+        return html;
+    }
+
+    let pendingText = null, rafId = null;
+    function scheduleRender(div, text) {
+        pendingText = text;
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+            rafId = null;
+            try {
+                div.innerHTML = renderMarkdown(pendingText);
+            } catch (e) {
+                div.textContent = 'AI：' + pendingText;   // 渲染失败保底显示纯文本
+                console.error('渲染失败：', e);
+            }
+            div.scrollIntoView();
+        });
+    }
+
+    /* ---------- 发送 + 流式接收 ---------- */
+    async function send() {
+        if (streaming) return;                    // 输出期间禁止发新消息
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = '';
+        setStreaming(true);
+        append('user', text);
+        history.push({ role: 'user', content: text });
+        const aiDiv = append('assistant', '');
+        msg.textContent = '';
+
+        try {
+            const resp = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(history)
+            });
+            if (!resp.ok || !resp.body) {
+                throw new Error('HTTP ' + resp.status);
+            }
+
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let reply = '';
+            let buffer = '';
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+
+                // SSE 事件之间用空行分隔；同一事件的 data 可能占多行（token 内带 \n）
+                let idx;
+                while ((idx = buffer.indexOf('\n\n')) !== -1) {
+                    const event = buffer.slice(0, idx);
+                    buffer = buffer.slice(idx + 2);
+                    const dataLines = event.split('\n').filter(l => l.startsWith('data:'));
+                    if (dataLines.length) {
+                        reply += dataLines.map(l => l.slice(5)).join('\n');  // 还原 token 内的换行
+                        scheduleRender(aiDiv, reply);
+                    }
+                }
+            }
+            // 收尾：最后一个事件可能没有结尾空行
+            buffer += decoder.decode();
+            const tail = buffer.split('\n').filter(l => l.startsWith('data:'));
+            if (tail.length) {
+                reply += tail.map(l => l.slice(5)).join('\n');
+            }
+
+            if (reply.startsWith('[[ERROR]]')) {
+                msg.textContent = '出错：' + reply.slice(9);
+                history.pop();
+            } else {
+                scheduleRender(aiDiv, reply);   // 最终再渲染一次完整版
+                history.push({ role: 'assistant', content: reply });
+            }
+        } catch (e) {
+            msg.textContent = '请求失败：' + e.message;
+            history.pop();
+        } finally {
+            setStreaming(false);
+        }
+    }
+</script>
+</body>
+</html>

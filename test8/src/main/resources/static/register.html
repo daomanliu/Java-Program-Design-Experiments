@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>注册</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; padding-top: 100px; background: #f5f5f5; }
+        .box { background: #fff; padding: 30px; border: 1px solid #ddd; width: 300px; }
+        h2 { margin: 0 0 20px; font-size: 18px; }
+        input { width: 100%; padding: 8px 10px; margin-bottom: 12px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { width: 100%; padding: 8px; background: #333; color: #fff; border: none; cursor: pointer; }
+        button:hover { background: #555; }
+        #msg { text-align: center; margin-top: 12px; font-size: 14px; min-height: 18px; }
+        .ok { color: green; } .err { color: red; }
+        .link { text-align: center; margin-top: 12px; font-size: 13px; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2>用户注册</h2>
+    <input type="text" id="name" placeholder="用户名">
+    <input type="password" id="password" placeholder="密码">
+    <button onclick="doRegister()">注 册</button>
+    <p id="msg"></p>
+    <p class="link">已有账号？<a href="login.html">去登录</a></p>
+</div>
+<script>
+    async function doRegister() {
+        const msg = document.getElementById('msg');
+        msg.className = ''; msg.textContent = '注册中...';
+        try {
+            const resp = await fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: document.getElementById('name').value,
+                    password: document.getElementById('password').value
+                })
+            });
+            const data = await resp.json();
+            msg.className = data.code === 200 ? 'ok' : 'err';
+            msg.textContent = data.msg;
+            if (data.code === 200) setTimeout(() => location.href = 'login.html', 800);
+        } catch (e) {
+            msg.className = 'err';
+            msg.textContent = '请求失败';
+        }
+    }
+</script>
+</body>
+</html>

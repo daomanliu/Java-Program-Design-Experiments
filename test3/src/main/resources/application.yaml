@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: test3
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+file:
+  upload-dir: D:\upload

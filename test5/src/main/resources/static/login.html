@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>登录</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            padding-top: 100px;
+            background: #f0f0f0;
+        }
+        .box {
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            width: 300px;
+        }
+        h2 { margin: 0 0 20px; font-size: 18px; }
+        input {
+            width: 100%;
+            padding: 8px 10px;
+            margin-bottom: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            width: 100%;
+            padding: 8px;
+            background: #333;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #555; }
+        #msg, #helloMsg { text-align: center; margin-top: 12px; font-size: 14px; min-height: 18px; }
+        .ok { color: green; }
+        .err { color: red; }
+        hr { margin: 16px 0; border: none; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2>用户登录</h2>
+    <label for="name"></label><input type="text" id="name" placeholder="用户名">
+    <label for="password"></label><input type="password" id="password" placeholder="密码">
+    <button onclick="doLogin()">登 录</button>
+    <p id="msg"></p>
+
+    <hr>
+    <button onclick="callHello()" style="background:#666">访问 /hello</button>
+    <p id="helloMsg"></p>
+</div>
+
+<script>
+    // ===== 登录 =====
+    async function doLogin() {
+        const msg = document.getElementById('msg');
+        msg.className = '';
+        msg.textContent = '登录中...';
+
+        try {
+            const resp = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: document.getElementById('name').value,
+                    password: document.getElementById('password').value
+                })
+            });
+            const data = await resp.json();
+
+            if (data.code === 200) {
+                // 关键：把 token 存进浏览器本地，callHello 要用
+                localStorage.setItem('token', data.data);
+                msg.className = 'ok';
+                msg.textContent = data.msg + '（token 已保存）';
+            } else {
+                msg.className = 'err';
+                msg.textContent = data.msg;
+            }
+        } catch (e) {
+            msg.className = 'err';
+            msg.textContent = '请求失败，请检查后端';
+        }
+    }
+
+    // ===== 带 token 访问受保护的 /hello =====
+    async function callHello() {
+        const token = localStorage.getItem('token');
+        const msg = document.getElementById('helloMsg');
+
+        // 场景A：没登录（浏览器里没有 token）
+        if (!token) {
+            msg.className = 'err';
+            msg.textContent = '未登录，没有 token，无权访问';
+            return;
+        }
+
+        msg.className = '';
+        msg.textContent = '请求中...';
+
+        try {
+            const resp = await fetch('/hello', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const text = await resp.text();
+
+            if (resp.ok) {
+                // 场景B：验签通过
+                msg.className = 'ok';
+                msg.textContent = '有权限！服务器返回：' + text;
+            } else {
+                // 场景C：token 无效/过期
+                msg.className = 'err';
+                msg.textContent = resp.status + ' 无权限：' + text;
+            }
+        } catch (e) {
+            msg.className = 'err';
+            msg.textContent = '请求失败：' + e.message;
+        }
+    }
+</script>
+
+</body>
+</html>

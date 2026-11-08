@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>文件管理</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; padding-top: 60px; background: #f0f0f0; }
+        .box { background: #fff; padding: 30px; border-radius: 8px; border: 1px solid #ddd; width: 480px; }
+        h2 { margin: 0 0 20px; font-size: 18px; }
+        .upload-row { display: flex; gap: 10px; margin-bottom: 20px; }
+        input[type=file] { flex: 1; }
+        button { padding: 8px 16px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #555; }
+        ul { list-style: none; padding: 0; }
+        li { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        a { color: #333; text-decoration: none; font-size: 14px; }
+        a:hover { text-decoration: underline; }
+        #msg { font-size: 14px; margin-bottom: 10px; min-height: 18px; }
+        .ok { color: green; } .err { color: red; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2>📁 文件管理</h2>
+    <div class="upload-row">
+        <input type="file" id="fileInput">
+        <button onclick="upload()">上传</button>
+    </div>
+    <p id="msg"></p>
+    <h2 style="margin-top:20px">已上传的文件</h2>
+    <ul id="fileList"></ul>
+</div>
+
+<script>
+    async function upload() {
+        const input = document.getElementById('fileInput');
+        const msg = document.getElementById('msg');
+        if (!input.files.length) { msg.className = 'err'; msg.textContent = '请先选择文件'; return; }
+
+        const formData = new FormData();
+        formData.append('file', input.files[0]);   // 注意：不用 JSON，用 FormData
+
+        const resp = await fetch('/file/upload', { method: 'POST', body: formData });
+        const data = await resp.json();
+        msg.className = data.code === 200 ? 'ok' : 'err';
+        msg.textContent = data.msg;
+        input.value = '';
+        loadList();
+    }
+
+    async function loadList() {
+        const resp = await fetch('/file/list');
+        const data = await resp.json();
+        const ul = document.getElementById('fileList');
+        ul.innerHTML = '';
+        if (data.code !== 200 || !data.data.length) {
+            ul.innerHTML = '<li>（暂无文件）</li>';
+            return;
+        }
+        data.data.forEach(name => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${name}</span>
+            <a href="/file/download/${encodeURIComponent(name)}" download>下载</a>`;
+            ul.appendChild(li);
+        });
+    }
+
+    loadList();  // 页面打开就加载列表
+</script>
+</body>
+</html>

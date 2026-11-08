@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>天气查询</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; padding-top: 60px; background: #f0f0f0; }
+        .box { background: #fff; padding: 30px; border-radius: 8px; border: 1px solid #ddd; width: 380px; }
+        h2 { margin: 0 0 20px; font-size: 18px; }
+        .row { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 8px 16px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        .item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+        .item span:last-child { color: #333; font-weight: bold; }
+        #msg { color: red; font-size: 14px; margin-bottom: 10px; min-height: 18px; }
+        #result h3 { margin: 0 0 10px; font-size: 16px; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2>🌤 天气查询</h2>
+    <div class="row">
+        <input type="text" id="city" placeholder="输入城市名，如：北京">
+        <button onclick="query()">查询</button>
+    </div>
+    <p id="msg"></p>
+    <div id="result"></div>
+</div>
+
+<script>
+    async function query() {
+        const city = document.getElementById('city').value.trim();
+        const msg = document.getElementById('msg');
+        const result = document.getElementById('result');
+        if (!city) { msg.textContent = '请输入城市名'; return; }
+        msg.textContent = '查询中...';
+        result.innerHTML = '';
+
+        try {
+            const resp = await fetch('/weather?city=' + encodeURIComponent(city));
+            const data = await resp.json();
+
+            if (data.code !== 200) { msg.textContent = data.msg; return; }
+            msg.textContent = '';
+            const w = data.data.weather;
+
+            result.innerHTML = `
+            <h3>${data.msg}</h3>
+            <div class="item"><span>天气</span><span>${w.condition.text}</span></div>
+            <div class="item"><span>温度</span><span>${w.temperature.value}${w.temperature.unit}</span></div>
+            <div class="item"><span>体感温度</span><span>${w.feelsLike.value}${w.feelsLike.unit}</span></div>
+            <div class="item"><span>湿度</span><span>${Math.round(w.humidity * 100)}%</span></div>
+            <div class="item"><span>风向</span><span>${w.wind.direction.compass.toUpperCase()}</span></div>
+            <div class="item"><span>风速</span><span>${w.wind.speed.value} ${w.wind.speed.unit}（${w.wind.scale}级）</span></div>
+            <div class="item"><span>气压</span><span>${w.pressure.value} ${w.pressure.unit}</span></div>
+            <div class="item"><span>能见度</span><span>${(w.visibility.value / 1000).toFixed(1)} km</span></div>
+        `;
+        } catch (e) {
+            msg.textContent = '请求失败：' + e.message;
+        }
+    }
+</script>
+</body>
+</html>

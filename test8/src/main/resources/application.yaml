@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: test8
+  datasource:
+    url: jdbc:mysql://localhost:3306/test6?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: "${DB_PASSWORD:your-db-password}"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
