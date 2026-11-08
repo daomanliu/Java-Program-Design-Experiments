@@ -64,7 +64,7 @@
 | 名称 | 形如 | 说明 |
 |------|------|------|
 | **API KEY** | `${QWEATHER_API_KEY}`（32 位） | 每个请求都要带 |
-| **API Host** | `pb3qqunj7t.re.qweatherapi.com` | **新版控制台每个账号一个"专属域名"**，不是 `devapi.qweather.com` |
+| **API Host** | `***.re.qweatherapi.com` | **新版控制台每个账号一个"专属域名"**，不是 `devapi.qweather.com` |
 
 > ⚠️ **关键坑**：网上很多老教程还在用 `devapi.qweather.com`。新版账号如果用自己的专属 Host，用老域名会返回 **401/403**。请以控制台"项目设置"里显示的 **API Host** 为准。
 
@@ -112,7 +112,7 @@ spring:
   application:
     name: test4
 qweather:
-  host: https://pb3qqunj7t.re.qweatherapi.com
+  host: https://***.re.qweatherapi.com
   key: ${QWEATHER_API_KEY}
 ```
 

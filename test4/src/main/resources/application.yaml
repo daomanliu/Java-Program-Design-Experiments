@@ -8,5 +8,5 @@ spring:
       chat:
         model: deepseek-flash
 qweather:
-  host: https://pb3qqunj7t.re.qweatherapi.com
+  host: https://***.re.qweatherapi.com
   key: "${QWEATHER_API_KEY:your-qweather-api-key}"
